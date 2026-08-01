@@ -31,20 +31,18 @@ LCD expects:      [RRRRRGGG, GGGBBBBB]
 
 The RGB components were already correct, but the two bytes of every pixel arrived in the wrong order. That is why swapping the red and blue channels was not the right fix and produced a green background.
 
-Thermalright's official TRCC 2.1.6 software was inspected to confirm that the Frozen Warframe Pro sends RGB565 data with the most-significant byte first. This plugin applies that byte-order correction only to model ID `0x20`, the Frozen Warframe Pro, so other Thermalright LCD models keep their existing behavior.
+Thermalright's official TRCC 2.1.6 software was inspected to confirm that the Frozen Warframe Pro sends RGB565 data with the most-significant byte first. This plugin requests SignalRGB's native `NZXT::RGB565` frame format only for model ID `0x20`, the Frozen Warframe Pro, so the conversion happens in SignalRGB's backend and other Thermalright LCD models keep their existing behavior.
 
 The relevant correction is:
 
 ```javascript
-if (this.getDeviceModel() === 0x20 && this.getDeviceEncoding() === "RGB565") {
-	const swapped = new Array(LCDData.length);
-	for (let i = 0; i < LCDData.length; i += 2) {
-		swapped[i] = LCDData[i + 1];
-		swapped[i + 1] = LCDData[i];
-	}
-	LCDData = swapped;
-}
+const frameFormat = this.getDeviceModel() === 0x20
+	? "NZXT::RGB565"
+	: this.getDeviceEncoding();
+const LCDData = LCD.getFrame({ format: frameFormat });
 ```
+
+The device metadata remains `RGB565`, ensuring the Thermalright protocol header still selects raw-pixel command `0x03`. Only the renderer format passed to `LCD.getFrame()` changes. This avoids allocating and processing a second JavaScript array for every frame.
 
 ## What you need
 
@@ -102,6 +100,10 @@ To remove this override, delete or move `Thermalright_LCD_Controller_Frozen_Warf
 ## Scope and status
 
 This fix was tested on one physical Frozen Warframe Pro unit. Reports from other revisions are welcome; include the cooler model, USB ID, SignalRGB version, and photos of both the SignalRGB preview and physical LCD.
+
+## Acknowledgements
+
+Thanks to Dordo from the SignalRGB community for suggesting the native `NZXT::RGB565` renderer, which replaces the original per-pixel JavaScript byte-swap.
 
 ## Attribution and licensing
 

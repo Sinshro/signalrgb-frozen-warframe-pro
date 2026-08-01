@@ -116,18 +116,12 @@ export class THERMALRIGHT_Device_Protocol {
 		const deviceWidth = this.getDeviceWidth();
 		const deviceHeight = this.getDeviceHeight();
 
-		let LCDData = LCD.getFrame({ format: this.getDeviceEncoding() });
-
 		// Frozen Warframe Pro consumes RGB565 most-significant byte first.
-		// SignalRGB's RGB565 frame is little-endian, so swap each pixel's two bytes.
-		if (this.getDeviceModel() === 0x20 && this.getDeviceEncoding() === "RGB565") {
-			const swapped = new Array(LCDData.length);
-			for (let i = 0; i < LCDData.length; i += 2) {
-				swapped[i] = LCDData[i + 1];
-				swapped[i + 1] = LCDData[i];
-			}
-			LCDData = swapped;
-		}
+		// Use SignalRGB's native conversion instead of swapping every pixel in JavaScript.
+		const frameFormat = this.getDeviceModel() === 0x20
+			? "NZXT::RGB565"
+			: this.getDeviceEncoding();
+		const LCDData = LCD.getFrame({ format: frameFormat });
 
 		const header = new Array(64).fill(0);
 		header[0] = 0x12;
